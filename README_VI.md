@@ -21,6 +21,8 @@ Một ứng dụng web gọn nhẹ, hiệu năng cao, hỗ trợ nhiều ngườ
 
 ## ✨ Tính Năng Nổi Bật
 
+- **Chuyển Đổi Giao Diện Sáng / Tối (Light & Dark Mode)**: Hỗ trợ linh hoạt 2 chế độ màu với bảng màu tối ưu độ tương phản, tự động ghi nhớ sở thích người dùng qua `localStorage`.
+- **Chuyển Đổi Ngôn Ngữ Song Ngữ (Tiếng Việt 🇻🇳 / English 🇬🇧)**: Chuyển đổi tức thì không cần tải lại trang cho toàn bộ giao diện, hướng dẫn, bảng xếp hạng và tên loại lỗi.
 - **Chống Trùng Lặp & Xung Đột LAN**: Sử dụng giao dịch cơ sở dữ liệu SQLite tức thì, tự động khóa ảnh khi có người mở và chỉ định người gán nhãn độc quyền.
 - **Tự Động Mở Khóa Sau 10 Phút Không Hoạt Động (Lock Expiration)**: Nếu một người dùng mở ảnh nhưng treo máy quá 10 phút, ảnh sẽ tự động được trả lại hàng đợi để người khác tiếp tục. Trình duyệt gửi tín hiệu nhịp tim định kỳ (Heartbeat 30 giây) để giữ khóa khi người dùng vẫn đang thao tác vẽ.
 - **Không Bao Giờ Mất Phân Loại Lỗi Gốc (`original_class_id`)**: Đọc số nguyên defect class ban đầu từ file `.txt` và lưu vĩnh viễn vào SQLite. Ngay cả khi ghi đè file `.txt` bằng các dòng bounding box YOLOv8 đầy đủ, mã lỗi gốc vẫn được bảo toàn.

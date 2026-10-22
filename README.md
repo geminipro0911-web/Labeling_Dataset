@@ -23,6 +23,8 @@ Built with **FastAPI**, **SQLite (WAL mode)**, and **Vanilla JavaScript (HTML5 C
 
 ## 🚀 Core Features
 
+- **Light & Dark Theme Toggle**: Seamless switching between dark and light themes with optimized high-contrast palettes, persisted across sessions via `localStorage`.
+- **Bilingual Support (Vietnamese 🇻🇳 / English 🇬🇧)**: Instant 1-click language toggling covering all interface text, modal dialogs, defect class names, and annotation instructions without page reloads.
 - **Multi-User LAN Anti-Collision**: SQLite transaction locks prevent concurrent annotators from being assigned or overwriting the same image simultaneously.
 - **10-Minute Lock Expiration & Heartbeat**: Inactive locks automatically expire after 10 minutes, returning abandoned images to the queue; active annotators keep locks alive via background heartbeats.
 - **Permanent Defect Class Retention**: Permanently records the original defect `class_id` from initial single-integer `.txt` files into SQLite, ensuring the defect type is never lost when overwriting `.txt` files with standard YOLOv8 bounding box lines.

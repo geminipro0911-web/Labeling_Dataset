@@ -1,11 +1,152 @@
 /**
  * YOLOv8 Collaborative Annotation Platform - Client Application
  * Vanilla JavaScript + HTML5 Canvas
+ * Multi-Language (VI / EN) & Theme (Dark / Light) Support
  */
+
+// Internationalization (i18n) Translations
+const i18n = {
+  vi: {
+    brandName: "Gán Nhãn YOLOv8",
+    targetDefect: "LOẠI LỖI MỤC TIÊU:",
+    totalImages: "Tổng Số Ảnh:",
+    totalLabeled: "Đã Gán Nhãn:",
+    labeledByYou: "Bạn Đã Gán:",
+    lanPrefix: "LAN:",
+    lanConnecting: "Đang kết nối...",
+    guestUser: "Khách",
+    switchUser: "Đổi User",
+    topAnnotators: "Bảng Xếp Hạng",
+    drawnBoxes: "Hộp Đã Vẽ",
+    clearAll: "Xóa Hết",
+    noBoxesHint: "Nhấn và kéo chuột trên ảnh để vẽ bounding box",
+    boxTitlePrefix: "Hộp",
+    deleteBoxTitle: "Xóa hộp này",
+    noImageLoaded: "Chưa tải ảnh",
+    undoBtn: "↩ Hoàn tác",
+    undoTitle: "Hoàn tác hộp vừa vẽ (Ctrl+Z)",
+    deleteSelectedBtn: "🗑 Xóa Đã Chọn",
+    deleteSelectedTitle: "Xóa hộp đang chọn (Del)",
+    loadingOverlayText: "Đang tải ảnh tiếp theo...",
+    backTitle: "Quay lại",
+    backHint: "Xem ảnh trước (A)",
+    nextTitle: "Tiếp theo",
+    nextHint: "Lưu & Tiếp (D / Enter)",
+    guidelineHeader: "Quy Tắc Gán Nhãn & Hình Ảnh Minh Họa",
+    guidelineBadge: "Chuẩn YOLOv8",
+    toggleViewText: "Bấm để xem hướng dẫn chi tiết",
+    rulesHeader: "🎯 Quy Tắc Vẽ Bounding Box:",
+    ruleTight: "<strong>Khung Ôm Sát:</strong> Vẽ hộp chữ nhật bao sát viền biên của khuyết tật, hạn chế tối đa phần nền thừa.",
+    ruleInstances: "<strong>Tách Riêng Từng Lỗi:</strong> Nếu có nhiều điểm khuyết tật riêng biệt, hãy vẽ từng hộp cho mỗi điểm.",
+    ruleNoClip: "<strong>Không Cắt Cụt Lỗi:</strong> Đảm bảo toàn bộ các mép của khuyết tật nằm trọn vẹn bên trong khung.",
+    ruleClassInherit: "<strong>Kế Thừa Mã Lỗi:</strong> Tất cả các hộp vẽ trên cùng một ảnh sẽ tự động kế thừa loại lỗi của ảnh đó.",
+    ruleAccidentalClicks: "<strong>Bỏ Qua Cú Click Lỗi:</strong> Các hộp có kích thước nhỏ hơn 5&times;5 pixels sẽ tự động bị bỏ qua.",
+    ruleShortcuts: "<strong>Phím Tắt Tiện Lợi:</strong> <code>Ctrl+Z</code> Hoàn tác | <code>Delete</code> Xóa hộp | <code>A</code> Quay lại | <code>D</code> / <code>Enter</code> Lưu & Tiếp.",
+    correctHeader: "GÁN NHÃN ĐÚNG",
+    correctDesc: "Khung bounding box ôm khít viền khuyết tật, lượng nền thừa tối thiểu.",
+    incorrectHeader: "GÁN NHÃN SAI",
+    incorrectDesc: "Khung quá rộng (lãng phí dung lượng học) hoặc cắt đứt một phần khuyết tật.",
+    loginTitle: "Đăng Nhập Cộng Tác Mạng LAN",
+    loginDesc: "Nhập Mã Nhân Viên hoặc Tên của bạn để bắt đầu gán nhãn. Mã này dùng để theo dõi khóa ảnh và xếp hạng trên bảng thành tích.",
+    loginInputLabel: "Mã Nhân Viên / Tên Người Dùng:",
+    loginInputPlaceholder: "ví dụ: NV-1042 hoặc NguyenVanA",
+    loginSsoNotice: "ℹ Cổng Chờ SSO Doanh Nghiệp: Sẵn sàng kết nối token SAML / OAuth2.",
+    loginBtn: "Bắt Đầu Gán Nhãn",
+    emptyConfirmTitle: "Chưa Vẽ Hộp Bounding Box",
+    emptyConfirmP1: "Bạn chưa vẽ bất kỳ khung bounding box nào trên bức ảnh này.",
+    emptyConfirmP2: "Bạn có muốn lưu ảnh này dưới dạng Mẫu Âm Tính (Negative Sample - Sản phẩm bình thường không lỗi) hay quay lại tiếp tục vẽ?",
+    emptyCancelBtn: "Quay Lại Vẽ Tiếp",
+    emptyConfirmBtn: "Lưu Mẫu Âm Tính",
+    allDoneTitle: "Đã Hoàn Thành Toàn Bộ!",
+    allDoneP1: "Tuyệt vời! Tất cả hình ảnh trong bộ dữ liệu đã được gán nhãn hoặc đang được đồng nghiệp xử lý.",
+    allDoneP2: "Kiểm tra bảng xếp hạng hoặc bấm Quét Lại để cập nhật nếu có ảnh mới được thêm vào.",
+    rescanBtn: "Quét Lại Dataset",
+    checkAgainBtn: "Kiểm Tra Lại",
+    leaderboardLoading: "Đang tải bảng xếp hạng...",
+    leaderboardEmpty: "Chưa có lượt gán nhãn nào. Hãy là người đầu tiên! 🚀",
+    savingOverlayText: "Đang lưu nhãn và tải ảnh tiếp theo...",
+    rescanningOverlayText: "Đang quét lại thư mục dữ liệu...",
+    saveFailed: "Lưu nhãn thất bại: ",
+    noPrevImage: "Không tìm thấy ảnh đã gán nhãn trước đó của bạn.",
+    enterValidIdAlert: "Vui lòng nhập Mã Nhân Viên hoặc Tên Người Dùng hợp lệ.",
+    itsYouTag: "BẠN",
+    themeToggleDark: "Tối",
+    themeToggleLight: "Sáng"
+  },
+  en: {
+    brandName: "YOLOv8 Annotator",
+    targetDefect: "TARGET DEFECT:",
+    totalImages: "Total Images:",
+    totalLabeled: "Total Labeled:",
+    labeledByYou: "Labeled by You:",
+    lanPrefix: "LAN:",
+    lanConnecting: "Connecting...",
+    guestUser: "Guest",
+    switchUser: "Switch",
+    topAnnotators: "Top Annotators",
+    drawnBoxes: "Drawn Boxes",
+    clearAll: "Clear All",
+    noBoxesHint: "Click & drag on image to draw bounding boxes",
+    boxTitlePrefix: "Box",
+    deleteBoxTitle: "Delete this box",
+    noImageLoaded: "No image loaded",
+    undoBtn: "↩ Undo",
+    undoTitle: "Undo last box (Ctrl+Z)",
+    deleteSelectedBtn: "🗑 Delete Selected",
+    deleteSelectedTitle: "Delete selected box (Del)",
+    loadingOverlayText: "Loading next image...",
+    backTitle: "Back",
+    backHint: "Review previous (A)",
+    nextTitle: "Next",
+    nextHint: "Save & Advance (D / Enter)",
+    guidelineHeader: "Annotation Guidelines & Visual Examples",
+    guidelineBadge: "YOLOv8 Standard",
+    toggleViewText: "Click to view instructions",
+    rulesHeader: "🎯 Bounding Box Rules:",
+    ruleTight: "<strong>Tight Boundaries:</strong> Draw the rectangular box snugly around the defect without leaving excessive background margins.",
+    ruleInstances: "<strong>Separate Instances:</strong> If there are multiple defect spots, draw a separate box around each defect.",
+    ruleNoClip: "<strong>Do Not Clip:</strong> Ensure all defect edges are completely enclosed inside the box.",
+    ruleClassInherit: "<strong>Single Defect Class:</strong> All boxes inherit the target defect class assigned to this image.",
+    ruleAccidentalClicks: "<strong>Accidental Clicks:</strong> Boxes smaller than 5×5 pixels are automatically ignored.",
+    ruleShortcuts: "<strong>Keyboard Shortcuts:</strong> <code>Ctrl+Z</code> Undo | <code>Delete</code> Delete selected | <code>A</code> Back | <code>D</code> / <code>Enter</code> Next.",
+    correctHeader: "CORRECT LABELING",
+    correctDesc: "Tight bounding box fits precisely around defect edges with minimal background.",
+    incorrectHeader: "INCORRECT LABELING",
+    incorrectDesc: "Too loose (wastes training capacity) or partially truncates the defect.",
+    loginTitle: "LAN Collaborator Sign-In",
+    loginDesc: "Enter your Employee ID or Name to start labeling. Your ID will track locks and rank you on the team leaderboard.",
+    loginInputLabel: "Employee ID / Username:",
+    loginInputPlaceholder: "e.g. EMP-1042 or Sarah",
+    loginSsoNotice: "ℹ Enterprise SSO Placeholder: Ready for SAML/OAuth2 token injection.",
+    loginBtn: "Start Labeling",
+    emptyConfirmTitle: "No Bounding Box Drawn",
+    emptyConfirmP1: "You haven't drawn any defect bounding boxes on this image.",
+    emptyConfirmP2: "Do you want to save this image as a Negative Sample (Defect-Free / Normal Image), or go back and draw boxes?",
+    emptyCancelBtn: "Go Back & Draw",
+    emptyConfirmBtn: "Save as Negative Sample",
+    allDoneTitle: "All Images Labeled!",
+    allDoneP1: "Awesome work! All images in the dataset are currently labeled or being processed by your colleagues on the LAN.",
+    allDoneP2: "Check the leaderboard or hit Refresh to see if new images were added.",
+    rescanBtn: "Rescan Dataset",
+    checkAgainBtn: "Check Again",
+    leaderboardLoading: "Loading rankings...",
+    leaderboardEmpty: "No annotations submitted yet. Be the first! 🚀",
+    savingOverlayText: "Saving labels and loading next image...",
+    rescanningOverlayText: "Rescanning dataset directory...",
+    saveFailed: "Save failed: ",
+    noPrevImage: "No previous labeled image found in your labeling history.",
+    enterValidIdAlert: "Please enter a valid Employee ID or Username.",
+    itsYouTag: "YOU",
+    themeToggleDark: "Dark",
+    themeToggleLight: "Light"
+  }
+};
 
 // Application State
 const state = {
   currentUser: localStorage.getItem("labeler_user") || "",
+  lang: localStorage.getItem("labeler_lang") || "vi",
+  theme: localStorage.getItem("labeler_theme") || "dark",
   lanUrl: "",
   classes: {},
   currentImage: null,    // { filename, original_class_id, class_name, image_width, image_height, boxes, ... }
@@ -19,7 +160,8 @@ const state = {
   mouseCanvasPos: { x: 0, y: 0 },
   isMouseInside: false,
   heartbeatIntervalId: null,
-  stats: null
+  stats: null,
+  leaderboardData: []
 };
 
 // DOM Elements
@@ -40,6 +182,14 @@ const lanUrlDisplay = document.getElementById("lan-url-display");
 const currentUserDisplay = document.getElementById("current-user-display");
 const btnSwitchUser = document.getElementById("btn-switch-user");
 
+// Theme & Language Switcher Elements
+const btnLangToggle = document.getElementById("btn-lang-toggle");
+const langFlag = document.getElementById("lang-flag");
+const langLabel = document.getElementById("lang-label");
+const btnThemeToggle = document.getElementById("btn-theme-toggle");
+const themeIcon = document.getElementById("theme-icon");
+const themeLabel = document.getElementById("theme-label");
+
 // Ribbon Elements
 const currentFilenameTag = document.getElementById("current-filename-tag");
 const imageDimensionsTag = document.getElementById("image-dimensions-tag");
@@ -56,11 +206,23 @@ const btnClearBoxes = document.getElementById("btn-clear-boxes");
 
 // Navigation Elements
 const btnBack = document.getElementById("btn-back");
+const btnBackTitle = document.getElementById("btn-back-title");
+const btnBackHint = document.getElementById("btn-back-hint");
 const btnNext = document.getElementById("btn-next");
+const btnNextTitle = document.getElementById("btn-next-title");
+const btnNextHint = document.getElementById("btn-next-hint");
 
 // Detail Card Elements
 const detailCard = document.getElementById("detail-card");
 const detailCardToggle = document.getElementById("detail-card-toggle");
+
+// Rules List Items
+const ruleTight = document.getElementById("rule-tight");
+const ruleInstances = document.getElementById("rule-instances");
+const ruleNoClip = document.getElementById("rule-noclip");
+const ruleClass = document.getElementById("rule-class");
+const ruleClicks = document.getElementById("rule-clicks");
+const ruleHotkeys = document.getElementById("rule-hotkeys");
 
 // Modals
 const loginModal = document.getElementById("login-modal");
@@ -76,10 +238,110 @@ const btnRescanDataset = document.getElementById("btn-rescan-dataset");
 const btnCloseAllDone = document.getElementById("btn-close-all-done");
 
 // ============================================================================
+// THEME & LANGUAGE MANAGEMENT
+// ============================================================================
+function applyTheme(theme) {
+  state.theme = theme;
+  localStorage.setItem("labeler_theme", theme);
+
+  if (theme === "light") {
+    document.body.classList.remove("dark-theme");
+    document.body.classList.add("light-theme");
+    themeIcon.textContent = "☀️";
+    themeLabel.textContent = i18n[state.lang].themeToggleLight;
+  } else {
+    document.body.classList.remove("light-theme");
+    document.body.classList.add("dark-theme");
+    themeIcon.textContent = "🌙";
+    themeLabel.textContent = i18n[state.lang].themeToggleDark;
+  }
+
+  redrawCanvas();
+}
+
+function toggleTheme() {
+  const newTheme = (state.theme === "dark") ? "light" : "dark";
+  applyTheme(newTheme);
+}
+
+function applyLanguage(lang) {
+  state.lang = lang;
+  localStorage.setItem("labeler_lang", lang);
+  document.documentElement.lang = lang;
+
+  const t = i18n[lang];
+
+  // Update switcher button
+  if (lang === "vi") {
+    langFlag.textContent = "🇻🇳";
+    langLabel.textContent = "VI";
+  } else {
+    langFlag.textContent = "🇬🇧";
+    langLabel.textContent = "EN";
+  }
+
+  // Update elements with data-i18n
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const key = el.getAttribute("data-i18n");
+    if (t[key]) {
+      el.textContent = t[key];
+    }
+  });
+
+  // Update Rules HTML
+  if (ruleTight) ruleTight.innerHTML = t.ruleTight;
+  if (ruleInstances) ruleInstances.innerHTML = t.ruleInstances;
+  if (ruleNoClip) ruleNoClip.innerHTML = t.ruleNoClip;
+  if (ruleClass) ruleClass.innerHTML = t.ruleClassInherit;
+  if (ruleClicks) ruleClicks.innerHTML = t.ruleAccidentalClicks;
+  if (ruleHotkeys) ruleHotkeys.innerHTML = t.ruleShortcuts;
+
+  // Update placeholders and titles
+  if (inputUserId) inputUserId.placeholder = t.loginInputPlaceholder;
+  if (btnUndo) btnUndo.title = t.undoTitle;
+  if (btnDeleteSelected) btnDeleteSelected.title = t.deleteSelectedTitle;
+
+  // Update theme button text according to language
+  themeLabel.textContent = (state.theme === "light") ? t.themeToggleLight : t.themeToggleDark;
+
+  // Update defect class name on badge
+  if (state.currentImage) {
+    defectClassName.textContent = formatDefectName(state.currentImage.original_class_id, state.currentImage.raw_class_name || state.currentImage.class_name);
+  }
+
+  // Re-render boxes list & leaderboard
+  renderBoxesList();
+  if (state.leaderboardData && state.leaderboardData.length > 0) {
+    renderLeaderboard(state.leaderboardData);
+  }
+}
+
+function toggleLanguage() {
+  const newLang = (state.lang === "vi") ? "en" : "vi";
+  applyLanguage(newLang);
+}
+
+function formatDefectName(classId, rawName) {
+  if (!rawName) return `Class ${classId}`;
+  if (rawName.includes("/")) {
+    const parts = rawName.split("/").map(s => s.trim());
+    const enName = parts[0];
+    const viName = parts[1] || parts[0];
+    const target = (state.lang === "vi") ? viName : enName;
+    return `Class ${classId}: ${target}`;
+  }
+  return `Class ${classId}: ${rawName}`;
+}
+
+// ============================================================================
 // INITIALIZATION
 // ============================================================================
 async function initApp() {
   setupEventListeners();
+
+  // Apply saved theme and language
+  applyTheme(state.theme);
+  applyLanguage(state.lang);
 
   if (!state.currentUser) {
     showLoginModal();
@@ -113,7 +375,7 @@ async function fetchSystemStatus() {
     const data = await res.json();
     state.lanUrl = data.lan_url;
     state.classes = data.classes;
-    lanUrlDisplay.textContent = `LAN: ${data.lan_url}`;
+    lanUrlDisplay.textContent = `${i18n[state.lang].lanPrefix} ${data.lan_url}`;
     updateStatsDisplay(data.stats);
   } catch (err) {
     console.error("Failed to fetch system status:", err);
@@ -125,7 +387,8 @@ async function fetchLeaderboard() {
     const res = await fetch("/api/leaderboard", { headers: getHeaders() });
     if (!res.ok) return;
     const data = await res.json();
-    renderLeaderboard(data.leaderboard);
+    state.leaderboardData = data.leaderboard || [];
+    renderLeaderboard(state.leaderboardData);
   } catch (err) {
     console.error("Failed to fetch leaderboard:", err);
   }
@@ -144,7 +407,7 @@ function updateStatsDisplay(stats) {
 // IMAGE & ANNOTATION MANAGEMENT
 // ============================================================================
 async function loadNextImage() {
-  showOverlay("Loading next image...");
+  showOverlay(i18n[state.lang].loadingOverlayText);
   try {
     const res = await fetch("/api/images/next", { headers: getHeaders() });
     if (res.status === 401) {
@@ -162,18 +425,19 @@ async function loadNextImage() {
     await setupImage(data);
   } catch (err) {
     console.error("Failed to load next image:", err);
-    showOverlay("Error loading image. Please retry.");
+    showOverlay(i18n[state.lang].saveFailed + err.message);
   }
 }
 
 async function setupImage(imageData) {
   state.currentImage = imageData;
+  state.currentImage.raw_class_name = imageData.class_name;
   state.boxes = imageData.boxes || [];
   state.selectedBoxIndex = -1;
   state.hoverBoxIndex = -1;
 
   // Update top status bar
-  defectClassName.textContent = imageData.class_name;
+  defectClassName.textContent = formatDefectName(imageData.original_class_id, imageData.class_name);
   currentFilenameTag.textContent = imageData.filename;
   imageDimensionsTag.textContent = `${imageData.image_width} × ${imageData.image_height} px`;
 
@@ -288,6 +552,7 @@ function drawBoundingBox(box, index, isSelected, isHovered) {
   }
 
   // Box Tag Label
+  const prefix = i18n[state.lang].boxTitlePrefix || "Box";
   const labelText = `#${index + 1} Class ${box.class_id}`;
   drawBoxLabel(box.xmin, box.ymin, labelText, strokeColor, isSelected ? "#000" : "#fff");
   ctx.restore();
@@ -330,9 +595,7 @@ function drawCrosshairs(x, y) {
   ctx.restore();
 }
 
-// Find box under mouse
 function findBoxIndexAt(x, y) {
-  // Check from topmost (last added) to bottommost
   for (let i = state.boxes.length - 1; i >= 0; i--) {
     const b = state.boxes[i];
     if (x >= b.xmin && x <= b.xmax && y >= b.ymin && y <= b.ymax) {
@@ -350,9 +613,11 @@ function renderBoxesList() {
   boxesListContainer.innerHTML = "";
 
   if (state.boxes.length === 0) {
-    boxesListContainer.innerHTML = '<div class="no-boxes-hint">Click & drag on image to draw bounding boxes</div>';
+    boxesListContainer.innerHTML = `<div class="no-boxes-hint">${i18n[state.lang].noBoxesHint}</div>`;
     return;
   }
+
+  const t = i18n[state.lang];
 
   state.boxes.forEach((box, idx) => {
     const w = Math.round(box.xmax - box.xmin);
@@ -360,9 +625,9 @@ function renderBoxesList() {
     const row = document.createElement("div");
     row.className = `box-list-row ${idx === state.selectedBoxIndex ? "selected" : ""}`;
     row.innerHTML = `
-      <span class="box-title">Box #${idx + 1}</span>
+      <span class="box-title">${t.boxTitlePrefix} #${idx + 1}</span>
       <span class="box-dim">${w} × ${h} px</span>
-      <button class="btn-del-box" title="Delete this box">✕</button>
+      <button class="btn-del-box" title="${t.deleteBoxTitle}">✕</button>
     `;
 
     row.addEventListener("click", (e) => {
@@ -420,16 +685,14 @@ function clearAllBoxes() {
 async function handleNext(isConfirmedEmpty = false) {
   if (!state.currentImage) return;
 
-  // Filter out boxes smaller than 5x5 px (accidental clicks)
   const validBoxes = state.boxes.filter(b => (b.xmax - b.xmin) >= 5 && (b.ymax - b.ymin) >= 5);
 
-  // If no boxes drawn and not confirmed empty, show confirmation modal
   if (validBoxes.length === 0 && !isConfirmedEmpty) {
     showEmptyConfirmModal();
     return;
   }
 
-  showOverlay("Saving labels and loading next image...");
+  showOverlay(i18n[state.lang].savingOverlayText);
 
   try {
     const filename = state.currentImage.filename;
@@ -454,19 +717,18 @@ async function handleNext(isConfirmedEmpty = false) {
 
     const data = await res.json();
     updateStatsDisplay(data.stats);
-    fetchLeaderboard(); // Update leaderboard rankings
+    fetchLeaderboard();
 
-    // Immediately load next image
     await loadNextImage();
   } catch (err) {
     console.error("Save error:", err);
-    alert(`Save failed: ${err.message}`);
+    alert(`${i18n[state.lang].saveFailed}${err.message}`);
     hideOverlay();
   }
 }
 
 async function handleBack() {
-  showOverlay("Loading previous labeled image...");
+  showOverlay(i18n[state.lang].loadingOverlayText);
   try {
     const currentFilename = state.currentImage ? state.currentImage.filename : null;
     const res = await fetch("/api/images/back", {
@@ -477,7 +739,7 @@ async function handleBack() {
 
     if (!res.ok) {
       const err = await res.json();
-      alert(err.detail || "Could not load previous image.");
+      alert(err.detail || i18n[state.lang].noPrevImage);
       hideOverlay();
       return;
     }
@@ -495,30 +757,33 @@ async function handleBack() {
 // ============================================================================
 function renderLeaderboard(leaderboard) {
   leaderboardList.innerHTML = "";
+  state.leaderboardData = leaderboard || [];
+
   if (!leaderboard || leaderboard.length === 0) {
-    leaderboardList.innerHTML = '<li class="leaderboard-loading">No annotations submitted yet. Be the first! 🚀</li>';
+    leaderboardList.innerHTML = `<li class="leaderboard-loading">${i18n[state.lang].leaderboardEmpty}</li>`;
     return;
   }
+
+  const t = i18n[state.lang];
 
   leaderboard.forEach(item => {
     const li = document.createElement("li");
     const isMe = (item.username.toLowerCase() === state.currentUser.toLowerCase());
     
-    // Rank Icon / Badge
     let rankBadge = `<span class="rank-num">#${item.rank}</span>`;
     let rankClass = "";
 
     if (item.rank === 1) {
-      rankBadge = `<span class="rank-badge" title="Champion Annotator">👑</span>`;
+      rankBadge = `<span class="rank-badge" title="Top 1">👑</span>`;
       rankClass = "rank-1";
     } else if (item.rank === 2) {
-      rankBadge = `<span class="rank-badge" title="Gold Medalist">🥇</span>`;
+      rankBadge = `<span class="rank-badge" title="Top 2">🥇</span>`;
       rankClass = "rank-2";
     } else if (item.rank === 3) {
-      rankBadge = `<span class="rank-badge" title="Silver Medalist">🥈</span>`;
+      rankBadge = `<span class="rank-badge" title="Top 3">🥈</span>`;
       rankClass = "rank-3";
     } else if (item.rank === 4) {
-      rankBadge = `<span class="rank-badge" title="Bronze Medalist">🥉</span>`;
+      rankBadge = `<span class="rank-badge" title="Top 4">🥉</span>`;
       rankClass = "rank-4";
     }
 
@@ -542,7 +807,6 @@ function startHeartbeat() {
   if (state.heartbeatIntervalId) {
     clearInterval(state.heartbeatIntervalId);
   }
-  // Every 30 seconds
   state.heartbeatIntervalId = setInterval(async () => {
     if (state.currentImage && state.currentImage.filename && state.currentUser) {
       try {
@@ -552,7 +816,7 @@ function startHeartbeat() {
           body: JSON.stringify({ filename: state.currentImage.filename })
         });
       } catch (e) {
-        // Heartbeat error silently ignored
+        // Silently ignore
       }
     }
   }, 30000);
@@ -562,6 +826,10 @@ function startHeartbeat() {
 // UI EVENT LISTENERS
 // ============================================================================
 function setupEventListeners() {
+  // Theme & Language Switchers
+  btnThemeToggle.addEventListener("click", toggleTheme);
+  btnLangToggle.addEventListener("click", toggleLanguage);
+
   // Canvas Mouse Events
   canvas.addEventListener("mouseenter", () => {
     state.isMouseInside = true;
@@ -597,17 +865,14 @@ function setupEventListeners() {
     if (e.button !== 0) return; // Only left click
     const pos = getCanvasMousePos(e);
 
-    // Check if clicked inside existing box
     const clickedBoxIdx = findBoxIndexAt(pos.x, pos.y);
 
     if (clickedBoxIdx !== -1 && !state.isDrawing) {
-      // Select clicked box
       state.selectedBoxIndex = clickedBoxIdx;
       btnDeleteSelected.disabled = false;
       renderBoxesList();
       redrawCanvas();
     } else {
-      // Start drawing new box
       state.isDrawing = true;
       state.drawStart = pos;
       state.drawCurrent = pos;
@@ -630,7 +895,6 @@ function setupEventListeners() {
     const w = xmax - xmin;
     const h = ymax - ymin;
 
-    // Reject accidental clicks (< 5 pixels)
     if (w >= 5 && h >= 5 && state.currentImage) {
       const newBox = {
         xmin, ymin, xmax, ymax,
@@ -670,7 +934,6 @@ function setupEventListeners() {
 
   // Keyboard Shortcuts
   window.addEventListener("keydown", (e) => {
-    // Ignore hotkeys when typing in modal inputs
     if (e.target.tagName === "INPUT") return;
 
     if (e.ctrlKey && e.key.toLowerCase() === "z") {
@@ -721,7 +984,7 @@ function setupEventListeners() {
     loadNextImage();
   });
   btnRescanDataset.addEventListener("click", async () => {
-    showOverlay("Rescanning dataset directory...");
+    showOverlay(i18n[state.lang].rescanningOverlayText);
     try {
       await fetch("/api/scan", { method: "POST" });
       await fetchSystemStatus();
@@ -756,7 +1019,7 @@ function showLoginModal() {
 function handleLoginSubmit() {
   const val = inputUserId.value.trim();
   if (!val) {
-    alert("Please enter a valid Employee ID or Username.");
+    alert(i18n[state.lang].enterValidIdAlert);
     return;
   }
   state.currentUser = val;
@@ -782,7 +1045,7 @@ function hideAllDoneModal() {
 }
 
 function showOverlay(text) {
-  loadingText.textContent = text || "Loading...";
+  loadingText.textContent = text || i18n[state.lang].loadingOverlayText;
   loadingOverlay.classList.add("active");
 }
 function hideOverlay() {
