@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YOLOv8 Collaborative Annotation Platform</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body class="dark-theme">
+
+  <!-- TOP STATUS BAR -->
+  <header class="top-bar">
+    <div class="top-bar-left">
+      <div class="brand">
+        <span class="brand-icon">🎯</span>
+        <span class="brand-text">YOLOv8 Annotator</span>
+      </div>
+      
+      <!-- Current Defect Class Badge -->
+      <div class="defect-badge-container">
+        <span class="defect-label">TARGET DEFECT:</span>
+        <div id="defect-class-badge" class="defect-badge">
+          <span class="badge-dot"></span>
+          <span id="defect-class-name">Loading...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Statistics -->
+    <div class="top-bar-stats">
+      <div class="stat-pill" title="Total dataset images">
+        <span class="stat-icon">📁</span>
+        <span class="stat-label">Total Images:</span>
+        <span id="stat-total" class="stat-value">0</span>
+      </div>
+      <div class="stat-pill" title="Total images labeled across all LAN annotators">
+        <span class="stat-icon">✅</span>
+        <span class="stat-label">Total Labeled:</span>
+        <span id="stat-labeled" class="stat-value">0</span>
+        <span id="stat-percent" class="stat-sub">(0%)</span>
+      </div>
+      <div class="stat-pill highlight" title="Images labeled by your account">
+        <span class="stat-icon">⭐</span>
+        <span class="stat-label">Labeled by You:</span>
+        <span id="stat-user-labeled" class="stat-value">0</span>
+      </div>
+    </div>
+
+    <!-- User & LAN Info -->
+    <div class="top-bar-right">
+      <div class="lan-indicator" title="Share this URL with teammates on your LAN">
+        <span class="lan-dot"></span>
+        <span id="lan-url-display">LAN: Connecting...</span>
+      </div>
+      <div class="user-profile">
+        <span class="user-avatar">👤</span>
+        <span id="current-user-display" class="user-name">Guest</span>
+        <button id="btn-switch-user" class="btn-sm btn-ghost" title="Change User / SSO Logout">Switch</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN APP CONTAINER -->
+  <div class="main-layout">
+    
+    <!-- LEFT COLUMN: LEADERBOARD -->
+    <aside class="left-sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">
+          <span class="icon">🏆</span> Top Annotators
+        </div>
+        <button id="btn-refresh-leaderboard" class="btn-icon" title="Refresh Leaderboard">🔄</button>
+      </div>
+      
+      <div class="leaderboard-container">
+        <ul id="leaderboard-list" class="leaderboard-list">
+          <li class="leaderboard-loading">Loading rankings...</li>
+        </ul>
+      </div>
+
+      <!-- Quick Canvas Box Tooling / Stats -->
+      <div class="box-stats-panel">
+        <div class="panel-header">
+          <span>📦 Drawn Boxes (<span id="box-count-badge">0</span>)</span>
+          <button id="btn-clear-boxes" class="btn-xs btn-danger" title="Clear all boxes on this image">Clear All</button>
+        </div>
+        <div id="boxes-list" class="boxes-list">
+          <div class="no-boxes-hint">Click & drag on image to draw bounding boxes</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER WORKSPACE: CANVAS & CONTROLS -->
+    <main class="canvas-workspace">
+      
+      <!-- Canvas Control Ribbon -->
+      <div class="workspace-ribbon">
+        <div class="ribbon-left">
+          <span class="file-name-tag" id="current-filename-tag">No image loaded</span>
+          <span class="dim-tag" id="image-dimensions-tag">0 x 0 px</span>
+        </div>
+        <div class="ribbon-center">
+          <span class="crosshair-coords" id="cursor-coords-display">X: 0 | Y: 0</span>
+        </div>
+        <div class="ribbon-right">
+          <button id="btn-undo" class="btn-sm btn-secondary" title="Undo last box (Ctrl+Z)">
+            ↩ Undo
+          </button>
+          <button id="btn-delete-selected" class="btn-sm btn-secondary" disabled title="Delete selected box (Del)">
+            🗑 Delete Selected
+          </button>
+        </div>
+      </div>
+
+      <!-- Canvas Stage -->
+      <div class="canvas-container" id="canvas-container">
+        <canvas id="annotation-canvas"></canvas>
+        <div id="canvas-loading-overlay" class="canvas-overlay active">
+          <div class="spinner"></div>
+          <p id="loading-overlay-text">Loading next image...</p>
+        </div>
+      </div>
+
+      <!-- MAIN NAVIGATION BUTTONS (ONLY 2 MAIN ACTION BUTTONS) -->
+      <div class="navigation-footer">
+        <button id="btn-back" class="btn-nav btn-nav-back" title="Load previous labeled image (Hotkey: A)">
+          <span class="btn-icon">⬅</span>
+          <div class="btn-text-group">
+            <span class="btn-title">Back</span>
+            <span class="btn-hint">Review previous (A)</span>
+          </div>
+        </button>
+
+        <button id="btn-next" class="btn-nav btn-nav-next" title="Save YOLO boxes and load next image (Hotkey: D or Enter)">
+          <div class="btn-text-group">
+            <span class="btn-title">Next</span>
+            <span class="btn-hint">Save & Advance (D / Enter)</span>
+          </div>
+          <span class="btn-icon">➡</span>
+        </button>
+      </div>
+
+      <!-- BOTTOM DETAIL CARD: GUIDELINES & EXAMPLES (EXPANDABLE, MINIFIED BY DEFAULT) -->
+      <section class="detail-card collapsed" id="detail-card">
+        <div class="detail-card-header" id="detail-card-toggle">
+          <div class="header-content">
+            <span class="guideline-icon">💡</span>
+            <span class="guideline-title">Annotation Guidelines & Visual Examples</span>
+            <span class="guideline-badge">YOLOv8 Standard</span>
+          </div>
+          <div class="toggle-icon-wrap">
+            <span class="toggle-text">Click to view instructions</span>
+            <span class="toggle-chevron">▾</span>
+          </div>
+        </div>
+
+        <div class="detail-card-body">
+          <div class="guidelines-content">
+            <!-- Rules list -->
+            <div class="rules-column">
+              <h4>🎯 Bounding Box Rules:</h4>
+              <ul>
+                <li><strong>Tight Boundaries:</strong> Draw the rectangular box snugly around the defect without leaving excessive background margins.</li>
+                <li><strong>Separate Instances:</strong> If there are multiple defect spots, draw a separate box around each defect.</li>
+                <li><strong>Do Not Clip:</strong> Ensure all defect edges are completely enclosed inside the box.</li>
+                <li><strong>Single Defect Class:</strong> All boxes inherit the target defect class assigned to this image.</li>
+                <li><strong>Accidental Clicks:</strong> Boxes smaller than 5&times;5 pixels are automatically ignored.</li>
+                <li><strong>Keyboard Shortcuts:</strong> <code>Ctrl+Z</code> Undo | <code>Delete</code> Delete selected | <code>A</code> Back | <code>D</code> / <code>Enter</code> Next.</li>
+              </ul>
+            </div>
+
+            <!-- Visual Examples Cards -->
+            <div class="examples-grid">
+              <!-- Correct Example -->
+              <div class="example-box correct">
+                <div class="example-header">
+                  <span class="badge-icon">✔</span>
+                  <span class="badge-title">CORRECT LABELING</span>
+                </div>
+                <div class="example-img-wrapper">
+                  <img src="/static/images/correct_example.png" alt="Correct Bounding Box Example">
+                </div>
+                <p class="example-desc">Tight bounding box fits precisely around defect edges with minimal background.</p>
+              </div>
+
+              <!-- Incorrect Example -->
+              <div class="example-box incorrect">
+                <div class="example-header">
+                  <span class="badge-icon">✖</span>
+                  <span class="badge-title">INCORRECT LABELING</span>
+                </div>
+                <div class="example-img-wrapper">
+                  <img src="/static/images/incorrect_example.png" alt="Incorrect Bounding Box Example">
+                </div>
+                <p class="example-desc">Too loose (wastes training capacity) or partially truncates the defect.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODALS -->
+
+  <!-- 1. LOGIN / SSO USERNAME MODAL -->
+  <div id="login-modal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <span class="modal-icon">🔐</span>
+        <h3>LAN Collaborator Sign-In</h3>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">
+          Enter your Employee ID or Name to start labeling. Your ID will track locks and rank you on the team leaderboard.
+        </p>
+        <div class="form-group">
+          <label for="input-user-id">Employee ID / Username:</label>
+          <input type="text" id="input-user-id" placeholder="e.g. EMP-1042 or Sarah" autocomplete="off" autofocus>
+        </div>
+        <div class="sso-notice">
+          <small>ℹ Enterprise SSO Placeholder: Ready for SAML/OAuth2 token injection.</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-login-submit" class="btn btn-primary">Start Labeling</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. EMPTY BOX CONFIRMATION MODAL -->
+  <div id="empty-confirm-modal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header warning">
+        <span class="modal-icon">⚠️</span>
+        <h3>No Bounding Box Drawn</h3>
+      </div>
+      <div class="modal-body">
+        <p>You haven't drawn any defect bounding boxes on this image.</p>
+        <p>Do you want to save this image as a <strong>Negative Sample</strong> (Defect-Free / Normal Image), or go back and draw boxes?</p>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-cancel-empty" class="btn btn-secondary">Go Back & Draw</button>
+        <button id="btn-confirm-empty" class="btn btn-warning">Save as Negative Sample</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. ALL DONE MODAL -->
+  <div id="all-done-modal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header success">
+        <span class="modal-icon">🎉</span>
+        <h3>All Images Labeled!</h3>
+      </div>
+      <div class="modal-body">
+        <p>Awesome work! All images in the dataset are currently labeled or being processed by your colleagues on the LAN.</p>
+        <p>Check the leaderboard or hit Refresh to see if new images were added.</p>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-rescan-dataset" class="btn btn-secondary">Rescan Dataset</button>
+        <button id="btn-close-all-done" class="btn btn-primary">Check Again</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

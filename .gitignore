@@ -1,0 +1,30 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Testing & Cache
+.pytest_cache/
+tests/test_dataset/
+tests/test_api_dataset/
+.coverage
+htmlcov/
+
+# Local database runtime files
+labeling_state.db
+labeling_state.db-wal
+labeling_state.db-shm
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
