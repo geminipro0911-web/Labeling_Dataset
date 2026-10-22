@@ -30,6 +30,7 @@ Built with **FastAPI**, **SQLite (WAL mode)**, and **Vanilla JavaScript (HTML5 C
 - **Permanent Defect Class Retention**: Permanently records the original defect `class_id` from initial single-integer `.txt` files into SQLite, ensuring the defect type is never lost when overwriting `.txt` files with standard YOLOv8 bounding box lines.
 - **Ultra-Responsive HTML5 Canvas**:
   - Single drawing mode: click-and-drag axis-aligned bounding box.
+  - **Move & 8-Point Resize**: No need to undo! Click any box to drag and move it, or drag any of the 8 corner/edge anchor handles to resize with dynamic cursors (`move`, `nwse-resize`, `nesw-resize`, `ns-resize`, `ew-resize`).
   - Full-canvas crosshair guidelines with coordinate readout.
   - Coordinate clamping within `[0, img_width]` and `[0, img_height]`.
   - Multiple box support on the same image (inherits target defect class).

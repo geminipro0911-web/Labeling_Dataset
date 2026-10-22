@@ -28,6 +28,7 @@ Một ứng dụng web gọn nhẹ, hiệu năng cao, hỗ trợ nhiều ngườ
 - **Không Bao Giờ Mất Phân Loại Lỗi Gốc (`original_class_id`)**: Đọc số nguyên defect class ban đầu từ file `.txt` và lưu vĩnh viễn vào SQLite. Ngay cả khi ghi đè file `.txt` bằng các dòng bounding box YOLOv8 đầy đủ, mã lỗi gốc vẫn được bảo toàn.
 - **Vẽ Hộp Bounding Box Mượt Mà Bằng HTML5 Canvas**:
   - Chế độ vẽ đơn giản: Nhấn và kéo chuột (`mousedown` $\to$ `mousemove` $\to$ `mouseup`) để tạo khung chữ nhật chuẩn YOLOv8.
+  - **Di Chuyển & Co Giãn Linh Hoạt (Move & Resize)**: Không cần phải bấm Undo khi vẽ lệch! Nhấp vào hộp để kéo di chuyển đến vị trí mong muốn, hoặc kéo 8 điểm neo (4 góc + 4 cạnh) để thay đổi kích cỡ với con trỏ chuột trực quan (`move`, `nwse-resize`, `nesw-resize`, v.v.).
   - **Đường Căn Tâm Toàn Màn Hình (Crosshair Guidelines)**: Hai đường dóng ngang và dọc màu xanh cyan chạy theo chuột trên toàn khung vẽ, kèm hiển thị tọa độ thời gian thực giúp căn chỉnh viền lỗi chuẩn xác.
   - **Hỗ Trợ Nhiều Hộp Trên Một Ảnh**: Cho phép vẽ 1 hoặc nhiều hộp lỗi; tất cả hộp tự động kế thừa `original_class_id` của ảnh đó.
   - **Quản Lý Hộp Linh Hoạt**: Nhấp vào hộp bất kỳ để chọn, xóa hộp đã chọn bằng phím `Delete`/`Backspace`, hoàn tác nhanh với nút `Undo` (`Ctrl+Z`), hoặc nút `Clear All`. Tự động bỏ qua các cú nhấp chuột vô ý kích thước $< 5\text{px}$.
@@ -226,9 +227,11 @@ async def get_current_user(request: Request) -> str:
 
 ## ⌨ Phím Tắt Tiện Dụng
 
-| Phím Tắt | Thao Tác |
+| Phím Tắt / Thao Tác | Ý Nghĩa Chức Năng |
 | :--- | :--- |
-| **Kéo thả chuột trái** | Vẽ một khung bounding box mới |
+| **Kéo thả chuột trên nền trống** | Vẽ một khung bounding box mới |
+| **Kéo thân hộp đang chọn** | **Di chuyển (Move)** vị trí hộp trên ảnh |
+| **Kéo 8 điểm neo (góc/cạnh)** | **Đổi kích cỡ (Resize)** khung hộp linh hoạt |
 | **Nhấp chuột trái vào hộp** | Chọn hộp để chỉnh sửa hoặc xóa |
 | **`Delete` / `Backspace`** | Xóa hộp đang được chọn |
 | **`Ctrl + Z`** | Hoàn tác (Undo) hộp vừa vẽ gần nhất |

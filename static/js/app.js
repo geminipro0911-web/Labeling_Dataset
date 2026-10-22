@@ -1,7 +1,7 @@
 /**
  * YOLOv8 Collaborative Annotation Platform - Client Application
  * Vanilla JavaScript + HTML5 Canvas
- * Multi-Language (VI / EN) & Theme (Dark / Light) Support
+ * Multi-Language (VI / EN), Theme (Dark / Light) & Box Move/Resize Support
  */
 
 // Internationalization (i18n) Translations
@@ -37,6 +37,7 @@ const i18n = {
     toggleViewText: "Bấm để xem hướng dẫn chi tiết",
     rulesHeader: "🎯 Quy Tắc Vẽ Bounding Box:",
     ruleTight: "<strong>Khung Ôm Sát:</strong> Vẽ hộp chữ nhật bao sát viền biên của khuyết tật, hạn chế tối đa phần nền thừa.",
+    ruleMoveResize: "<strong>Di Chuyển & Đổi Cỡ:</strong> Nhấp vào hộp để kéo di chuyển, hoặc kéo 8 điểm neo ở các góc/cạnh để chỉnh kích cỡ linh hoạt mà không cần hoàn tác.",
     ruleInstances: "<strong>Tách Riêng Từng Lỗi:</strong> Nếu có nhiều điểm khuyết tật riêng biệt, hãy vẽ từng hộp cho mỗi điểm.",
     ruleNoClip: "<strong>Không Cắt Cụt Lỗi:</strong> Đảm bảo toàn bộ các mép của khuyết tật nằm trọn vẹn bên trong khung.",
     ruleClassInherit: "<strong>Kế Thừa Mã Lỗi:</strong> Tất cả các hộp vẽ trên cùng một ảnh sẽ tự động kế thừa loại lỗi của ảnh đó.",
@@ -104,6 +105,7 @@ const i18n = {
     toggleViewText: "Click to view instructions",
     rulesHeader: "🎯 Bounding Box Rules:",
     ruleTight: "<strong>Tight Boundaries:</strong> Draw the rectangular box snugly around the defect without leaving excessive background margins.",
+    ruleMoveResize: "<strong>Move & Resize:</strong> Click any box to drag and move it, or drag any of the 8 corner/edge handles to resize flexibly without undoing.",
     ruleInstances: "<strong>Separate Instances:</strong> If there are multiple defect spots, draw a separate box around each defect.",
     ruleNoClip: "<strong>Do Not Clip:</strong> Ensure all defect edges are completely enclosed inside the box.",
     ruleClassInherit: "<strong>Single Defect Class:</strong> All boxes inherit the target defect class assigned to this image.",
@@ -149,12 +151,17 @@ const state = {
   theme: localStorage.getItem("labeler_theme") || "dark",
   lanUrl: "",
   classes: {},
-  currentImage: null,    // { filename, original_class_id, class_name, image_width, image_height, boxes, ... }
+  currentImage: null,
   imgElement: null,
-  boxes: [],             // Array of { xmin, ymin, xmax, ymax, class_id } in image pixel coordinates
+  boxes: [],
   selectedBoxIndex: -1,
   hoverBoxIndex: -1,
-  isDrawing: false,
+  hoverHandle: null,       // { key, cursor } or null
+  interactionMode: null,   // 'drawing' | 'moving' | 'resizing' | null
+  activeHandle: null,      // 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | null
+  activeHandleCursor: null,
+  dragStartPos: { x: 0, y: 0 },
+  initialBox: null,
   drawStart: { x: 0, y: 0 },
   drawCurrent: { x: 0, y: 0 },
   mouseCanvasPos: { x: 0, y: 0 },
@@ -218,6 +225,7 @@ const detailCardToggle = document.getElementById("detail-card-toggle");
 
 // Rules List Items
 const ruleTight = document.getElementById("rule-tight");
+const ruleMoveResize = document.getElementById("rule-moveresize");
 const ruleInstances = document.getElementById("rule-instances");
 const ruleNoClip = document.getElementById("rule-noclip");
 const ruleClass = document.getElementById("rule-class");
@@ -271,7 +279,6 @@ function applyLanguage(lang) {
 
   const t = i18n[lang];
 
-  // Update switcher button
   if (lang === "vi") {
     langFlag.textContent = "🇻🇳";
     langLabel.textContent = "VI";
@@ -280,7 +287,6 @@ function applyLanguage(lang) {
     langLabel.textContent = "EN";
   }
 
-  // Update elements with data-i18n
   document.querySelectorAll("[data-i18n]").forEach(el => {
     const key = el.getAttribute("data-i18n");
     if (t[key]) {
@@ -288,28 +294,24 @@ function applyLanguage(lang) {
     }
   });
 
-  // Update Rules HTML
   if (ruleTight) ruleTight.innerHTML = t.ruleTight;
+  if (ruleMoveResize) ruleMoveResize.innerHTML = t.ruleMoveResize;
   if (ruleInstances) ruleInstances.innerHTML = t.ruleInstances;
   if (ruleNoClip) ruleNoClip.innerHTML = t.ruleNoClip;
   if (ruleClass) ruleClass.innerHTML = t.ruleClassInherit;
   if (ruleClicks) ruleClicks.innerHTML = t.ruleAccidentalClicks;
   if (ruleHotkeys) ruleHotkeys.innerHTML = t.ruleShortcuts;
 
-  // Update placeholders and titles
   if (inputUserId) inputUserId.placeholder = t.loginInputPlaceholder;
   if (btnUndo) btnUndo.title = t.undoTitle;
   if (btnDeleteSelected) btnDeleteSelected.title = t.deleteSelectedTitle;
 
-  // Update theme button text according to language
   themeLabel.textContent = (state.theme === "light") ? t.themeToggleLight : t.themeToggleDark;
 
-  // Update defect class name on badge
   if (state.currentImage) {
     defectClassName.textContent = formatDefectName(state.currentImage.original_class_id, state.currentImage.raw_class_name || state.currentImage.class_name);
   }
 
-  // Re-render boxes list & leaderboard
   renderBoxesList();
   if (state.leaderboardData && state.leaderboardData.length > 0) {
     renderLeaderboard(state.leaderboardData);
@@ -339,7 +341,6 @@ function formatDefectName(classId, rawName) {
 async function initApp() {
   setupEventListeners();
 
-  // Apply saved theme and language
   applyTheme(state.theme);
   applyLanguage(state.lang);
 
@@ -435,19 +436,18 @@ async function setupImage(imageData) {
   state.boxes = imageData.boxes || [];
   state.selectedBoxIndex = -1;
   state.hoverBoxIndex = -1;
+  state.hoverHandle = null;
+  state.interactionMode = null;
 
-  // Update top status bar
   defectClassName.textContent = formatDefectName(imageData.original_class_id, imageData.class_name);
   currentFilenameTag.textContent = imageData.filename;
   imageDimensionsTag.textContent = `${imageData.image_width} × ${imageData.image_height} px`;
 
-  // Color code defect badge based on class_id
   const badgeColors = ["#38bdf8", "#f59e0b", "#ef4444", "#a855f7", "#ec4899", "#10b981", "#6366f1"];
   const color = badgeColors[imageData.original_class_id % badgeColors.length];
   defectClassBadge.style.color = color;
   defectClassBadge.style.borderColor = color;
 
-  // Load Image Object
   const img = new Image();
   img.crossOrigin = "anonymous";
   img.src = imageData.image_url;
@@ -459,7 +459,6 @@ async function setupImage(imageData) {
 
   state.imgElement = img;
 
-  // Initialize Canvas resolution matching exact image pixels
   canvas.width = img.naturalWidth;
   canvas.height = img.naturalHeight;
 
@@ -467,6 +466,55 @@ async function setupImage(imageData) {
   redrawCanvas();
   hideOverlay();
   btnDeleteSelected.disabled = true;
+}
+
+// ============================================================================
+// BOX RESIZE HANDLES & GEOMETRY
+// ============================================================================
+function getBoxHandles(box) {
+  const xmin = box.xmin;
+  const ymin = box.ymin;
+  const xmax = box.xmax;
+  const ymax = box.ymax;
+  const midX = (xmin + xmax) / 2;
+  const midY = (ymin + ymax) / 2;
+
+  return {
+    nw: { x: xmin, y: ymin, cursor: "nwse-resize" },
+    n:  { x: midX, y: ymin, cursor: "ns-resize" },
+    ne: { x: xmax, y: ymin, cursor: "nesw-resize" },
+    e:  { x: xmax, y: midY, cursor: "ew-resize" },
+    se: { x: xmax, y: ymax, cursor: "nwse-resize" },
+    s:  { x: midX, y: ymax, cursor: "ns-resize" },
+    sw: { x: xmin, y: ymax, cursor: "nesw-resize" },
+    w:  { x: xmin, y: midY, cursor: "ew-resize" }
+  };
+}
+
+function getHandleAtPos(pos, box) {
+  if (!box) return null;
+  const rect = canvas.getBoundingClientRect();
+  const scale = canvas.width / rect.width;
+  const hitRadius = Math.max(9, 11 * scale);
+  const handles = getBoxHandles(box);
+
+  for (const [key, handle] of Object.entries(handles)) {
+    const distSq = (pos.x - handle.x) ** 2 + (pos.y - handle.y) ** 2;
+    if (distSq <= hitRadius ** 2) {
+      return { key, cursor: handle.cursor };
+    }
+  }
+  return null;
+}
+
+function findBoxIndexAt(x, y) {
+  for (let i = state.boxes.length - 1; i >= 0; i--) {
+    const b = state.boxes[i];
+    if (x >= b.xmin && x <= b.xmax && y >= b.ymin && y <= b.ymax) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 // ============================================================================
@@ -497,27 +545,26 @@ function redrawCanvas() {
     drawBoundingBox(box, idx, isSelected, isHovered);
   });
 
-  // 3. Draw active drawing box (if user is dragging)
-  if (state.isDrawing) {
+  // 3. Draw active drawing box (if user is drawing new box)
+  if (state.interactionMode === "drawing") {
     const xmin = Math.min(state.drawStart.x, state.drawCurrent.x);
     const ymin = Math.min(state.drawStart.y, state.drawCurrent.y);
     const w = Math.abs(state.drawCurrent.x - state.drawStart.x);
     const h = Math.abs(state.drawCurrent.y - state.drawStart.y);
 
     ctx.save();
-    ctx.strokeStyle = "#10b981"; // Vibrant emerald
+    ctx.strokeStyle = "#10b981";
     ctx.lineWidth = Math.max(2, Math.round(canvas.width / 450));
     ctx.fillStyle = "rgba(16, 185, 129, 0.22)";
     ctx.fillRect(xmin, ymin, w, h);
     ctx.strokeRect(xmin, ymin, w, h);
 
-    // Dimension tooltip
     drawBoxLabel(xmin, ymin, `${Math.round(w)} × ${Math.round(h)} px`, "#10b981", "#000");
     ctx.restore();
   }
 
-  // 4. Draw Crosshair Guidelines (Full-canvas horizontal & vertical lines)
-  if (state.isMouseInside) {
+  // 4. Draw Crosshair Guidelines (when idle or drawing)
+  if (state.isMouseInside && (!state.interactionMode || state.interactionMode === "drawing")) {
     drawCrosshairs(state.mouseCanvasPos.x, state.mouseCanvasPos.y);
   }
 }
@@ -538,23 +585,34 @@ function drawBoundingBox(box, index, isSelected, isHovered) {
   ctx.fillRect(box.xmin, box.ymin, w, h);
   ctx.strokeRect(box.xmin, box.ymin, w, h);
 
-  // Corner resize-style anchor markers for selected box
+  // Draw 8 Resize Handles on selected box
   if (isSelected) {
-    const s = Math.max(6, Math.round(canvas.width / 180));
-    ctx.fillStyle = "#38bdf8";
-    const corners = [
-      [box.xmin - s/2, box.ymin - s/2],
-      [box.xmax - s/2, box.ymin - s/2],
-      [box.xmin - s/2, box.ymax - s/2],
-      [box.xmax - s/2, box.ymax - s/2]
-    ];
-    corners.forEach(([cx, cy]) => ctx.fillRect(cx, cy, s, s));
+    drawBoxHandles(box);
   }
 
   // Box Tag Label
   const prefix = i18n[state.lang].boxTitlePrefix || "Box";
-  const labelText = `#${index + 1} Class ${box.class_id}`;
+  const labelText = `#${index + 1} Class ${box.class_id} (${Math.round(w)}×${Math.round(h)})`;
   drawBoxLabel(box.xmin, box.ymin, labelText, strokeColor, isSelected ? "#000" : "#fff");
+  ctx.restore();
+}
+
+function drawBoxHandles(box) {
+  const handles = getBoxHandles(box);
+  const rect = canvas.getBoundingClientRect();
+  const scale = canvas.width / rect.width;
+  const s = Math.max(7, Math.round(8.5 * scale)); // handle anchor size
+
+  ctx.save();
+  for (const [key, handle] of Object.entries(handles)) {
+    const isHoveredHandle = (state.hoverHandle && state.hoverHandle.key === key);
+    ctx.fillStyle = isHoveredHandle ? "#ffffff" : ((state.theme === "light") ? "#0284c7" : "#38bdf8");
+    ctx.strokeStyle = (state.theme === "light") ? "#0f172a" : "#ffffff";
+    ctx.lineWidth = Math.max(1.5, Math.round(1.8 * scale));
+
+    ctx.fillRect(handle.x - s/2, handle.y - s/2, s, s);
+    ctx.strokeRect(handle.x - s/2, handle.y - s/2, s, s);
+  }
   ctx.restore();
 }
 
@@ -576,33 +634,21 @@ function drawBoxLabel(x, y, text, bgColor, textColor) {
 
 function drawCrosshairs(x, y) {
   ctx.save();
-  ctx.strokeStyle = "rgba(56, 189, 248, 0.75)"; // Cyan high-contrast guideline
+  ctx.strokeStyle = (state.theme === "light") ? "rgba(2, 132, 199, 0.7)" : "rgba(56, 189, 248, 0.75)";
   ctx.lineWidth = 1;
   ctx.setLineDash([6, 6]);
 
-  // Horizontal line across full canvas
   ctx.beginPath();
   ctx.moveTo(0, y);
   ctx.lineTo(canvas.width, y);
   ctx.stroke();
 
-  // Vertical line across full canvas
   ctx.beginPath();
   ctx.moveTo(x, 0);
   ctx.lineTo(x, canvas.height);
   ctx.stroke();
 
   ctx.restore();
-}
-
-function findBoxIndexAt(x, y) {
-  for (let i = state.boxes.length - 1; i >= 0; i--) {
-    const b = state.boxes[i];
-    if (x >= b.xmin && x <= b.xmax && y >= b.ymin && y <= b.ymax) {
-      return i;
-    }
-  }
-  return -1;
 }
 
 // ============================================================================
@@ -823,14 +869,12 @@ function startHeartbeat() {
 }
 
 // ============================================================================
-// UI EVENT LISTENERS
+// UI EVENT LISTENERS & INTERACTIVE MOVE/RESIZE
 // ============================================================================
 function setupEventListeners() {
-  // Theme & Language Switchers
   btnThemeToggle.addEventListener("click", toggleTheme);
   btnLangToggle.addEventListener("click", toggleLanguage);
 
-  // Canvas Mouse Events
   canvas.addEventListener("mouseenter", () => {
     state.isMouseInside = true;
   });
@@ -838,8 +882,9 @@ function setupEventListeners() {
   canvas.addEventListener("mouseleave", () => {
     state.isMouseInside = false;
     cursorCoordsDisplay.textContent = "X: - | Y: -";
-    if (state.isDrawing) {
-      state.isDrawing = false;
+    canvas.style.cursor = "default";
+    if (state.interactionMode === "drawing") {
+      state.interactionMode = null;
     }
     redrawCanvas();
   });
@@ -849,61 +894,181 @@ function setupEventListeners() {
     state.mouseCanvasPos = pos;
     cursorCoordsDisplay.textContent = `X: ${pos.x} | Y: ${pos.y}`;
 
-    if (state.isDrawing) {
-      state.drawCurrent = pos;
+    // 1. Moving an existing box
+    if (state.interactionMode === "moving" && state.selectedBoxIndex !== -1) {
+      const dx = pos.x - state.dragStartPos.x;
+      const dy = pos.y - state.dragStartPos.y;
+      const box = state.boxes[state.selectedBoxIndex];
+      const w = state.initialBox.xmax - state.initialBox.xmin;
+      const h = state.initialBox.ymax - state.initialBox.ymin;
+
+      let newXmin = state.initialBox.xmin + dx;
+      let newYmin = state.initialBox.ymin + dy;
+
+      newXmin = Math.max(0, Math.min(canvas.width - w, newXmin));
+      newYmin = Math.max(0, Math.min(canvas.height - h, newYmin));
+
+      box.xmin = Math.round(newXmin);
+      box.ymin = Math.round(newYmin);
+      box.xmax = Math.round(newXmin + w);
+      box.ymax = Math.round(newYmin + h);
+
+      canvas.style.cursor = "grabbing";
       redrawCanvas();
-    } else {
-      const boxIdx = findBoxIndexAt(pos.x, pos.y);
+      renderBoxesList();
+      return;
+    }
+
+    // 2. Resizing an existing box
+    if (state.interactionMode === "resizing" && state.selectedBoxIndex !== -1) {
+      const dx = pos.x - state.dragStartPos.x;
+      const dy = pos.y - state.dragStartPos.y;
+      const box = state.boxes[state.selectedBoxIndex];
+      const init = state.initialBox;
+      const handle = state.activeHandle;
+      const minSize = 5;
+
+      let newXmin = init.xmin;
+      let newXmax = init.xmax;
+      let newYmin = init.ymin;
+      let newYmax = init.ymax;
+
+      if (handle.includes("w")) {
+        newXmin = Math.max(0, Math.min(init.xmax - minSize, init.xmin + dx));
+      }
+      if (handle.includes("e")) {
+        newXmax = Math.min(canvas.width, Math.max(init.xmin + minSize, init.xmax + dx));
+      }
+      if (handle.includes("n")) {
+        newYmin = Math.max(0, Math.min(init.ymax - minSize, init.ymin + dy));
+      }
+      if (handle.includes("s")) {
+        newYmax = Math.min(canvas.height, Math.max(init.ymin + minSize, init.ymax + dy));
+      }
+
+      box.xmin = Math.round(newXmin);
+      box.ymin = Math.round(newYmin);
+      box.xmax = Math.round(newXmax);
+      box.ymax = Math.round(newYmax);
+
+      canvas.style.cursor = state.activeHandleCursor || "nwse-resize";
+      redrawCanvas();
+      renderBoxesList();
+      return;
+    }
+
+    // 3. Drawing a new box
+    if (state.interactionMode === "drawing") {
+      state.drawCurrent = pos;
+      canvas.style.cursor = "crosshair";
+      redrawCanvas();
+      return;
+    }
+
+    // 4. Hover state detection (when idle)
+    // Check if hovering over handles of selected box
+    if (state.selectedBoxIndex !== -1) {
+      const selectedBox = state.boxes[state.selectedBoxIndex];
+      const handleHit = getHandleAtPos(pos, selectedBox);
+      if (handleHit) {
+        state.hoverHandle = handleHit;
+        canvas.style.cursor = handleHit.cursor;
+        redrawCanvas();
+        return;
+      }
+    }
+    state.hoverHandle = null;
+
+    // Check if hovering inside any box
+    const boxIdx = findBoxIndexAt(pos.x, pos.y);
+    if (boxIdx !== -1) {
+      canvas.style.cursor = "move";
       if (boxIdx !== state.hoverBoxIndex) {
         state.hoverBoxIndex = boxIdx;
+        redrawCanvas();
+      }
+    } else {
+      canvas.style.cursor = "crosshair";
+      if (state.hoverBoxIndex !== -1) {
+        state.hoverBoxIndex = -1;
+        redrawCanvas();
+      } else {
         redrawCanvas();
       }
     }
   });
 
   canvas.addEventListener("mousedown", (e) => {
-    if (e.button !== 0) return; // Only left click
+    if (e.button !== 0) return; // Left click only
     const pos = getCanvasMousePos(e);
 
-    const clickedBoxIdx = findBoxIndexAt(pos.x, pos.y);
-
-    if (clickedBoxIdx !== -1 && !state.isDrawing) {
-      state.selectedBoxIndex = clickedBoxIdx;
-      btnDeleteSelected.disabled = false;
-      renderBoxesList();
-      redrawCanvas();
-    } else {
-      state.isDrawing = true;
-      state.drawStart = pos;
-      state.drawCurrent = pos;
-      state.selectedBoxIndex = -1;
-      btnDeleteSelected.disabled = true;
-      renderBoxesList();
-      redrawCanvas();
+    // 1. Check if clicking on a resize handle of selected box
+    if (state.selectedBoxIndex !== -1) {
+      const selectedBox = state.boxes[state.selectedBoxIndex];
+      const handleHit = getHandleAtPos(pos, selectedBox);
+      if (handleHit) {
+        state.interactionMode = "resizing";
+        state.activeHandle = handleHit.key;
+        state.activeHandleCursor = handleHit.cursor;
+        state.dragStartPos = pos;
+        state.initialBox = { ...selectedBox };
+        canvas.style.cursor = handleHit.cursor;
+        return;
+      }
     }
+
+    // 2. Check if clicking inside an existing box
+    const clickedBoxIdx = findBoxIndexAt(pos.x, pos.y);
+    if (clickedBoxIdx !== -1) {
+      state.selectedBoxIndex = clickedBoxIdx;
+      state.interactionMode = "moving";
+      state.dragStartPos = pos;
+      state.initialBox = { ...state.boxes[clickedBoxIdx] };
+      btnDeleteSelected.disabled = false;
+      canvas.style.cursor = "grabbing";
+      renderBoxesList();
+      redrawCanvas();
+      return;
+    }
+
+    // 3. Clicking on empty canvas: Start drawing new box
+    state.selectedBoxIndex = -1;
+    btnDeleteSelected.disabled = true;
+    state.interactionMode = "drawing";
+    state.drawStart = pos;
+    state.drawCurrent = pos;
+    canvas.style.cursor = "crosshair";
+    renderBoxesList();
+    redrawCanvas();
   });
 
   window.addEventListener("mouseup", (e) => {
-    if (!state.isDrawing) return;
-    state.isDrawing = false;
+    if (!state.interactionMode) return;
 
-    const xmin = Math.min(state.drawStart.x, state.drawCurrent.x);
-    const ymin = Math.min(state.drawStart.y, state.drawCurrent.y);
-    const xmax = Math.max(state.drawStart.x, state.drawCurrent.x);
-    const ymax = Math.max(state.drawStart.y, state.drawCurrent.y);
+    if (state.interactionMode === "drawing") {
+      const xmin = Math.min(state.drawStart.x, state.drawCurrent.x);
+      const ymin = Math.min(state.drawStart.y, state.drawCurrent.y);
+      const xmax = Math.max(state.drawStart.x, state.drawCurrent.x);
+      const ymax = Math.max(state.drawStart.y, state.drawCurrent.y);
 
-    const w = xmax - xmin;
-    const h = ymax - ymin;
+      const w = xmax - xmin;
+      const h = ymax - ymin;
 
-    if (w >= 5 && h >= 5 && state.currentImage) {
-      const newBox = {
-        xmin, ymin, xmax, ymax,
-        class_id: state.currentImage.original_class_id
-      };
-      state.boxes.push(newBox);
-      state.selectedBoxIndex = state.boxes.length - 1;
-      btnDeleteSelected.disabled = false;
+      if (w >= 5 && h >= 5 && state.currentImage) {
+        const newBox = {
+          xmin, ymin, xmax, ymax,
+          class_id: state.currentImage.original_class_id
+        };
+        state.boxes.push(newBox);
+        state.selectedBoxIndex = state.boxes.length - 1;
+        btnDeleteSelected.disabled = false;
+      }
     }
+
+    state.interactionMode = null;
+    state.activeHandle = null;
+    state.activeHandleCursor = null;
+    state.initialBox = null;
 
     renderBoxesList();
     redrawCanvas();
